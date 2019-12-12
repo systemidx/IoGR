@@ -13,7 +13,7 @@ from .models.enums.logic import Logic
 from .models.enums.enemizer import Enemizer
 from .models.enums.start_location import StartLocation
 
-VERSION = "2.5.3"
+VERSION = "2.6.1"
 
 KARA_EDWARDS = 1
 KARA_MINE = 2
@@ -96,6 +96,7 @@ def generate_filename(settings: RandomizerData, extension: str):
     filename += getLogic(settings.logic)
     filename += getStartingLocation(settings.start_location)
     filename += getEnemizer(settings.enemizer)
+    filename += getSwitch(settings.open_mode, "o")
     filename += getSwitch(settings.boss_shuffle, "b")
     filename += getSwitch(settings.firebird, "f")
     filename += getSwitch(settings.ohko, "ohko")
@@ -1492,7 +1493,7 @@ class Randomizer:
         patch.seek(int("bd71c", 16) + rom_offset)
         patch.write(qt_encode("    Created by") + b"\xCB" + qt_encode("       DontBaguMe") + str_endpause)
         patch.seek(int("bd74f", 16) + rom_offset)
-        patch.write(qt_encode("Additional Development By") + b"\xCB" + qt_encode("    bryon w and Raeven0"))
+        patch.write(qt_encode("Additional Development By") + b"\xCB" + qt_encode("    bryon-w and Raeven0"))
         patch.write(b"\xCB" + qt_encode("  EmoTracker by Apokalysme"))
         patch.write(b"\xC9\x78\xCE\xCB" + qt_encode("   Thanks to all the") + b"\xCB" + qt_encode("  amazing playtesters!") + str_endpause)
         patch.seek(int("bdee2", 16) + rom_offset)
@@ -1514,33 +1515,33 @@ class Randomizer:
         patch.write(b"\x80\xfa")
         patch.seek(int("bfa80", 16) + rom_offset)
         patch.write(b"\xD3\xD2\x00\xD5\x00" + qt_encode("Contributors and Testers:") + b"\xCB")
-        patch.write(qt_encode("-Alchemic   -Austin21300") + b"\xCB")
-        patch.write(qt_encode("-Atlas      -BOWIEtheHERO") + b"\xCB")
-        patch.write(qt_encode("-Bonzaibier -BubbaSWalter") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-Alchemic  -Austin21300") + b"\xCB")
+        patch.write(qt_encode("-Atlas     -BonzaiBier") + b"\xCB")
+        patch.write(qt_encode("-Crazyhaze -BOWIEtheHERO") + b"\xC9\xB4\xCE")
 
-        patch.write(qt_encode("-Crazyhaze  -DerTolleIgel") + b"\xCB")
-        patch.write(qt_encode("-DoodSF     -djtifaheart") + b"\xCB")
-        patch.write(qt_encode("-Eppy37     -Keypaladin") + b"\xCB")
-        patch.write(qt_encode("-Lassic") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-DoodSF    -BubbaSWalter") + b"\xCB")
+        patch.write(qt_encode("-Eppy37    -DerTolleIgel") + b"\xCB")
+        patch.write(qt_encode("-Lassic    -djtifaheart") + b"\xCB")
+        patch.write(qt_encode("-Le Hulk   -GliitchWiitch") + b"\xC9\xB4\xCE")
 
-        patch.write(qt_encode("-Le Hulk    -Neomatamune") + b"\xCB")
-        patch.write(qt_encode("-manafreak  -NYRambler") + b"\xCB")
-        patch.write(qt_encode("-Mikan      -Plan") + b"\xCB")
-        patch.write(qt_encode("-Mr Freet   -Pozzum Senpai") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-Mikan     -Keypaladin") + b"\xCB")
+        patch.write(qt_encode("-Mr Freet  -Neomatamune") + b"\xCB")
+        patch.write(qt_encode("-NYRambler -Pozzum Senpai") + b"\xCB")
+        patch.write(qt_encode("-Plan") + b"\xC9\xB4\xCE")
 
-        patch.write(qt_encode("-roeya      -Skipsy") + b"\xCB")
-        patch.write(qt_encode("-Scheris    -SmashManiac") + b"\xCB")
-        patch.write(qt_encode("-SDiezal    -solarcell007") + b"\xCB")
-        patch.write(qt_encode("-Skarsnik   -steve hacks") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-roeya     -Skipsy") + b"\xCB")
+        patch.write(qt_encode("-Scheris   -SmashManiac") + b"\xCB")
+        patch.write(qt_encode("-SDiezal   -solarcell007") + b"\xCB")
+        patch.write(qt_encode("-Skarsnik  -steve hacks") + b"\xC9\xB4\xCE")
 
-        patch.write(qt_encode("-Sye990     -Verallix") + b"\xCB")
-        patch.write(qt_encode("-Tsurana    -Volor") + b"\xCB")
-        patch.write(qt_encode("-Tymekeeper -Veetorp") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-Sye990    -Tymekeeper") + b"\xCB")
+        patch.write(qt_encode("-Tsurana   -Veetorp") + b"\xCB")
+        patch.write(qt_encode("-Volor     -Verallix") + b"\xC9\xB4\xCE")
 
-        patch.write(qt_encode("-Voranthe   -Xyrcord") + b"\xCB")
-        patch.write(qt_encode("-Wilddin    -Z4t0x") + b"\xCB")
-        patch.write(qt_encode("-wormsofcan -ZockerStu") + b"\xCB")
-        patch.write(qt_encode("-xIceblue") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-Voranthe  -wormsofcan") + b"\xCB")
+        patch.write(qt_encode("-Wilddin   -Xyrcord") + b"\xCB")
+        patch.write(qt_encode("-xIceblue  -ZockerStu") + b"\xCB")
+        patch.write(qt_encode("-Z4t0x") + b"\xC9\xB4\xCE")
 
         patch.write(b"\xCB" + qt_encode("  Thank you all so much!"))
         patch.write(b"\xCB" + qt_encode("     This was so fun!"))
@@ -2308,18 +2309,18 @@ class Randomizer:
             patch.write(b"\x10\x00")
 
         # Change "Return to Dao" Babel spirit text
-        babel_boss = boss_order[5]
+        babel_boss = boss_order.index(6)
         patch.seek(int("980a6", 16) + rom_offset)
-        if babel_boss == 1:
-            patch.write(b"\x42\x8e\x80\xa3\xa4\xca")
+        if babel_boss == 0:
+            patch.write(b"\x42\x8e\x80\xa3\xa4\xca")                      # "Coast"
+        elif babel_boss == 1:
+            patch.write(b"\x63\x84\x80\xac\x60\x80\x8b\x80\x82\x84\xca")  # "Seaside Palace"
         elif babel_boss == 2:
-            patch.write(b"\x63\x84\x80\xac\x60\x80\x8b\x80\x82\x84\xca")
+            patch.write(b"\x4c\xa5\xca")                                  # "Mu"
         elif babel_boss == 3:
-            patch.write(b"\x4c\xa5\xca")
+            patch.write(b"\xd6\x16\x67\x80\x8b\x8b\xca")                  # "Great Wall"
         elif babel_boss == 4:
-            patch.write(b"\xd6\x16\x67\x80\x8b\x8b\xca")
-        elif babel_boss == 5:
-            patch.write(b"\xd6\x3f\xca")
+            patch.write(b"\xd6\x3f\xca")                                  # "Pyramid"
 
         patch.seek(int("8cddb", 16) + rom_offset)
         patch.write(b"\x47\x84\x84\x84\x84\x84\x84\x84\x84\x84\x84\x84\x84\x84\x84\xa2\x84\x0e\xa3\xac\xcb")
@@ -2742,7 +2743,8 @@ class Randomizer:
 
         room_offsets = ["6d95e", "6d98a", "6d9b4", "6d9de"]  # ROM addrs for cursor capture, by room
         coord_offsets = [3, 8, 15, 20]  # Offsets for xmin, xmax, ymin, ymax
-        changes = [random.randint(1, 8), random.randint(1, 7), random.randint(1, 5), random.randint(1, 7)]
+        changes = [random.randint(1, 11), random.randint(1, 9), random.randint(1, 5), random.randint(1, 7)]
+        #changes = [10,3,1,1]  #testing#########
 
         # Set change for Room 1
         if changes[0] == 1:  # Change right vase to light (vanilla)
@@ -2786,7 +2788,28 @@ class Randomizer:
             f_ishtarmap.write(b"\x74")
             coords = [b"\x60\x01", b"\x70\x01", b"\x58\x00", b"\x70\x00"]
 
-        elif changes[0] == 8:  # Will's hair
+        elif changes[0] == 8:  # Remove left sconce
+            f_ishtarmap.seek(int("157", 16))
+            f_ishtarmap.write(b"\x12\x12")
+            f_ishtarmap.seek(int("167", 16))
+            f_ishtarmap.write(b"\x1a\x1a")
+            coords = [b"\x70\x01", b"\x90\x01", b"\x50\x00", b"\x70\x00"]
+
+        elif changes[0] == 9:  # Remove right sconce
+            f_ishtarmap.seek(int("15a", 16))
+            f_ishtarmap.write(b"\x12\x12")
+            f_ishtarmap.seek(int("16a", 16))
+            f_ishtarmap.write(b"\x1a\x1a")
+            coords = [b"\xa0\x01", b"\xc0\x01", b"\x50\x00", b"\x70\x00"]
+
+        elif changes[0] == 10:  # Shift right vase
+            f_ishtarmap.seek(int("17a", 16))
+            f_ishtarmap.write(b"\x83\x22")
+            f_ishtarmap.seek(int("18a", 16))
+            f_ishtarmap.write(b"\x87\x13")
+            coords = [b"\xa0\x01", b"\xb0\x01", b"\x70\x00", b"\x90\x00"]
+
+        elif changes[0] == 11:  # Will's hair
             patch.seek(int("6dd06", 16) + rom_offset)
             patch.write(b"\x5d")
             coords = [b"\xa0\x01", b"\xc0\x01", b"\xb0\x00", b"\xd0\x00"]
@@ -2797,19 +2820,33 @@ class Randomizer:
             patch.write(coords[i])
 
         # Set change for Room 2
-        if changes[1] == 1:  # Change both pots to dark (vanilla)
+        if changes[1] == 1:  # Change both vases to light (vanilla)
             f_ishtarmap.seek(int("3a3", 16))
             f_ishtarmap.write(b"\x7c\x7c")
             f_ishtarmap.seek(int("3b3", 16))
             f_ishtarmap.write(b"\x84\x84")
             coords = [b"\x30\x03", b"\x50\x03", b"\xa0\x00", b"\xc0\x00"]
 
-        elif changes[1] == 2:  # Remove rock
+        if changes[1] == 2:  # Change left vase to light
+            f_ishtarmap.seek(int("3a3", 16))
+            f_ishtarmap.write(b"\x7c")
+            f_ishtarmap.seek(int("3b3", 16))
+            f_ishtarmap.write(b"\x84")
+            coords = [b"\x30\x03", b"\x40\x03", b"\xa0\x00", b"\xc0\x00"]
+
+        if changes[1] == 3:  # Change right vase to light
+            f_ishtarmap.seek(int("3a4", 16))
+            f_ishtarmap.write(b"\x7c")
+            f_ishtarmap.seek(int("3b4", 16))
+            f_ishtarmap.write(b"\x84")
+            coords = [b"\x40\x03", b"\x50\x03", b"\xa0\x00", b"\xc0\x00"]
+
+        elif changes[1] == 4:  # Remove rock
             f_ishtarmap.seek(int("3bd", 16))
             f_ishtarmap.write(b"\x73")
             coords = [b"\xd0\x03", b"\xe0\x03", b"\xb0\x00", b"\xc0\x00"]
 
-        elif changes[1] == 3:  # Add round table
+        elif changes[1] == 5:  # Add round table
             f_ishtarmap.seek(int("395", 16))
             f_ishtarmap.write(b"\x7d\x7e")
             f_ishtarmap.seek(int("3a5", 16))
@@ -2818,24 +2855,24 @@ class Randomizer:
             f_ishtarmap.write(b"\x8d\x8e")
             coords = [b"\x50\x03", b"\x70\x03", b"\x90\x00", b"\xb0\x00"]
 
-        elif changes[1] == 4:  # Add sconce
+        elif changes[1] == 6:  # Add sconce
             f_ishtarmap.seek(int("357", 16))
             f_ishtarmap.write(b"\x88\x89")
             f_ishtarmap.seek(int("367", 16))
             f_ishtarmap.write(b"\x90\x91")
             coords = [b"\x70\x03", b"\x90\x03", b"\x50\x00", b"\x70\x00"]
 
-        elif changes[1] == 5:  # Add rock
+        elif changes[1] == 7:  # Add rock
             f_ishtarmap.seek(int("3b2", 16))
             f_ishtarmap.write(b"\x77")
             coords = [b"\x20\x03", b"\x30\x03", b"\xb0\x00", b"\xc0\x00"]
 
-        elif changes[1] == 6:  # Will's hair
+        elif changes[1] == 8:  # Will's hair
             patch.seek(int("6dd0e", 16) + rom_offset)
             patch.write(b"\x5d")
             coords = [b"\x90\x03", b"\xb0\x03", b"\xa0\x00", b"\xc0\x00"]
 
-        elif changes[1] == 7:  # Put moss on rock
+        elif changes[1] == 9:  # Put moss on rock
             f_ishtarmap.seek(int("3bd", 16))
             f_ishtarmap.write(b"\x8f")
             coords = [b"\xd0\x03", b"\xe0\x03", b"\xb0\x00", b"\xc0\x00"]
