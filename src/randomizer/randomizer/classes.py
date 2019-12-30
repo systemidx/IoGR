@@ -139,11 +139,99 @@ class World:
         for x in self.graph:
             self.graph[x][0] = False
 
+    # Translates exits to world graph
+    def map_exits(self):
+        for exit in self.exits:
+            # Check if exit has been shuffled
+            if self.exits[exit][1]:
+                new_exit = self.exits[exit][1]
+            else:
+                new_exit = exit
+
+            # Check if exit is coupled
+            if self.exits[new_exit][3]:
+                sister_exit = self.exits[new_exit][0]
+                origin = self.exits[sister_exit][5]
+                dest = self.exits[sister_exit][4]
+            else:
+                origin = self.exits[new_exit][4]
+                dest = self.exits[new_exit][5]
+
+            # Translate link into world graph
+            if dest not in self.graph[origin][1]:
+                self.graph[origin][1].append(dest)
+
+    # Entrance randomizer
+    def shuffle_exits(self):
+        # Make a clean copy of world graph for later replacement
+        graph_copy = self.graph.copy()
+
+        # Assume all items and abilities
+        for x in self.logic:
+            if x < 400 or x > 404 or (x - self.kara + 1) == 400:
+                origin = self.logic[x][0]
+                dest = self.logic[x][1]
+                if dest not in self.graph[origin][1]:
+                    self.graph[origin][1].append(dest)
+
+        # Map passages and internal dungeon exits to graph and list all available exits
+        exit_list = []
+        passages = [10,11,12,13,14,15,16,17]
+        for x in self.exits:
+            if self.exits[x][4] in passages or self.exits[x][5] in passages or (
+                    self.exits[x][9] and self.exits[x][2] == "Room"):
+                origin = self.exits[x][4]
+                dest = self.exits[x][5]
+                if dest not in self.graph[origin][1]:
+                    self.graph[origin][1].append(dest)
+            elif not self.exits[x][1] and not self.exits[x][3]:
+                exit_list.append(x)
+
+        # List all graph regions
+        region_list = []
+        for x in self.graph:
+            region_list.append(x)
+
+        # Shuffle lists
+        random.shuffle(exit_list)
+        random.shuffle(region_list)
+
+        solved = False
+        while not solved:
+            items = self.traverse()
+            while region_list:
+                region = region_list.pop(0)
+                if not self.graph[region][0]:    # If graph region is inaccessible
+                    print("mapping to region: ", region)
+                    found_exit = False
+                    for exit in self.exits:
+                        if not found_exit and not self.exits[exit][1]:
+                            if self.exits[exit][5] == region:
+                                print("Found a potential exit: ", exit)
+                                origin = self.exits[exit][4]
+                                if self.graph[origin][0]:
+                                    found_exit = True
+                                    exit_origin = exit_list.pop(0)
+                                    self.exits[exit_origin][1] = exit
+                                    self.exits[exit][1] = exit_origin
+                                    self.graph[region][0] = True
+                                    print("mapped exit: ", exit, exit_origin)
+                    if found_exit:
+                        items = self.traverse()
+                    else:
+                        region_list.append(region)
+
+        print("Done!")
+
+        # Re-initialize world graph
+        self.graph = graph_copy
+        return True
+
     # Finds all accessible locations and returns all accessible items
     def traverse(self, start_items=[]):
         # print "Traverse:"
         self.unsolve()
-        to_visit = [-1]
+        to_visit = [0]
         items = start_items[:]
         while to_visit:
             origin = to_visit.pop(0)
@@ -498,9 +586,9 @@ class World:
             self.item_pool[35][4] = True
             self.item_pool[38][4] = True
 
-        # Solid Arm can only be required in Extreme
-        if self.mode != 3:
-            self.graph[82][1].remove(67)
+        # Solid Arm can only be required in Extreme  ******FIX THIS******************
+#        if self.mode != 3:
+#            self.graph[82][1].remove(67)
 
         # Random start location
         if self.start_mode != "South Cape":
@@ -576,6 +664,8 @@ class World:
                 self.exits[boss_exit_idx[boss-1]][1] = boss_exit_idx[dungeon]
                 dungeon += 1
 
+        # Entrance Shuffle goes here **********************************
+
         # Chaos mode
         if self.logic_mode == "Chaos":
             # Add "Inaccessible" node to graph
@@ -602,68 +692,20 @@ class World:
                 self.item_locations[x][2] = False
 
         # Change graph logic depending on Kara's location
-        if self.kara == 1:
-            self.logic[150][2][0][1] = 1
-            self.graph[10][3].append(20)
-        elif self.kara == 2:
-            self.logic[151][2][0][1] = 1
-            self.graph[26][3].append(20)
-            # Change "Sam" to "Samlet"
-            self.location_text[45] = b"\x63\x80\x8c\x8b\x84\xa4"
-        elif self.kara == 3:
-            self.logic[152][2][0][1] = 1
-            self.graph[43][3].append(20)
-        elif self.kara == 4:
-            self.logic[153][2][0][1] = 1
-            self.graph[53][3].append(20)
-        elif self.kara == 5:
-            self.logic[154][2][0][1] = 1
-            self.graph[60][3].append(20)
+        kara_logic = 400 + self.kara - 1
+        kara_region = self.logic[kara_logic][0]
+        self.logic[kara_logic][2][0][1] = 1
+        self.graph[kara_region][3].append(20)
 
         # Change logic based on which dungeons are required
         for x in self.statues:
-            self.logic[155][2][x][1] = 1
+            self.logic[406][2][x][1] = 1
 
-        # Update graph in case bosses/entrances are shuffled
-        self.check_exits()
+        # Shuffle exits
+        self.shuffle_exits()
 
-    # Check entrances for unresolved shuffles
-    def check_exits(self):
-        for x in self.exits:
-            if self.exits[x][1] > 0:   # Check if exit has been mapped
-                self.map_exit(x)
-
-        # Check and resolve coupled exits
-        for y in self.exits:
-            x = self.exits[y][0]
-            if x > 0:
-                xprime = self.exits[x][1]
-                if self.exits[y][1] == 0 and xprime > 0:
-                    yprime = self.exits[xprime][0]
-                    if yprime > 0:
-                        self.exits[y][1] = yprime
-                        self.map_exit(y)
-
-
-    # Map new exit
-    def map_exit(self, from_exit):
-        to_exit = self.exits[from_exit][1]
-        from_region = self.exits[from_exit][4]
-        to_region_old = self.exits[from_exit][5]
-        to_region_new = self.exits[to_exit][5]
-        # print("Mapping",from_exit," to", to_exit)
-
-        # Update graph with new link
-        if to_region_old in self.graph[from_region][1]:
-            self.graph[from_region][1].remove(to_region_old)
-            self.graph[from_region][1].append(to_region_new)
-            # print("Graph:",from_region,self.graph[from_region])
-
-        # Update logic with new link
-        for x in self.logic:
-            if self.logic[x][0] == from_region and self.logic[x][1] == to_region_old:
-                self.logic[x][1] = to_region_new
-                # print("Logic",x,self.logic[x])
+        # Update graph with exits
+        self.map_exits()
 
     # Update item placement logic after abilities are placed
     def check_logic(self):
@@ -811,16 +853,6 @@ class World:
                     return False
                 progression_list = []
 
-            # print "To progress: ",progression_list
-
-            #            if not done and not progression_list:
-            #                #print "Gotta make room..."
-            #                removed = self.make_room(item_locations,inv_full)
-            #                if not removed:
-            #                    print "ERROR: Could not remove non-progression item"
-            #                    return False
-            #                #print "Cleared this location: ", removed
-
             if not done and progression_list:
                 # Determine next progression items to add to accessible locations
                 progression_mc = self.monte_carlo(progression_list)
@@ -843,19 +875,12 @@ class World:
 
             # print goal, done
 
-        # print "Unaccessible: ",self.unaccessible_locations(item_locations)
-        #        for node in self.graph:
-        #            if not self.graph[node][0]:
-        #                print "Can't reach ",self.graph[node][2]
-
         junk_items = self.list_item_pool()
         self.random_fill(junk_items, item_locations, False)
 
         placement_log = self.placement_log[:]
         random.shuffle(placement_log)
         self.in_game_spoilers(placement_log)
-
-        # print cycle
 
         return True
 
@@ -980,87 +1005,89 @@ class World:
                     f.write(b"\x02")
                 elif reward == 3:
                     f.write(b"\x03")
-
+        print("ROM: room rewards done")
         # Items and abilities
         for x in self.item_locations:
-            type = self.item_locations[x][1]
+            if x < 200:
+                type = self.item_locations[x][1]
 
-            # Write items to ROM
-            if type == 1:
-                item = self.item_locations[x][3]
-                # print "Writing item ", item
-                item_addr = self.item_locations[x][5]
-                item_code = self.item_pool[item][2]
-                text1_addr = self.item_locations[x][6]
-                text2_addr = self.item_locations[x][7]
-                text3_addr = self.item_locations[x][8]
-                text_long = self.item_text_long[item]
-                text_short = self.item_text_short[item]
+                # Write items to ROM
+                if type == 1:
+                    item = self.item_locations[x][3]
+                    # print "Writing item ", item
+                    item_addr = self.item_locations[x][5]
+                    item_code = self.item_pool[item][2]
+                    text1_addr = self.item_locations[x][6]
+                    text2_addr = self.item_locations[x][7]
+                    text3_addr = self.item_locations[x][8]
+                    text_long = self.item_text_long[item]
+                    text_short = self.item_text_short[item]
 
-                # Write item code to memory
-                if item_code:
-                    f.seek(int(item_addr, 16) + rom_offset)
-                    f.write(item_code)
+                    # Write item code to memory
+                    if item_code:
+                        f.seek(int(item_addr, 16) + rom_offset)
+                        f.write(item_code)
 
-                # Write item text, if appropriate
-                if text1_addr:
-                    f.seek(int(text1_addr, 16) + rom_offset)
-                    f.write(text_long)
-                    # f.write(b"\xd3")
-                    # f.write(text_short)
-                    f.write(b"\xc0")
+                    # Write item text, if appropriate
+                    if text1_addr:
+                        f.seek(int(text1_addr, 16) + rom_offset)
+                        f.write(text_long)
+                        # f.write(b"\xd3")
+                        # f.write(text_short)
+                        f.write(b"\xc0")
 
-                # Write "inventory full" item text, if appropriate
-                if text2_addr:
-                    f.seek(int(text2_addr, 16) + rom_offset)
-                    # f.write(b"\xd3")
-                    # f.write(text_short)
-                    f.write(text_long)
-                    f.write(b"\xcb\x45\x65\x4b\x4b\x4f\xc0")  # Just says "FULL!"
+                    # Write "inventory full" item text, if appropriate
+                    if text2_addr:
+                        f.seek(int(text2_addr, 16) + rom_offset)
+                        # f.write(b"\xd3")
+                        # f.write(text_short)
+                        f.write(text_long)
+                        f.write(b"\xcb\x45\x65\x4b\x4b\x4f\xc0")  # Just says "FULL!"
 
-                # Write jeweler inventory text, if apprpriate
-                if text3_addr:
-                    f.seek(int(text3_addr, 16) + rom_offset)
-                    f.write(text_short)
+                    # Write jeweler inventory text, if apprpriate
+                    if text3_addr:
+                        f.seek(int(text3_addr, 16) + rom_offset)
+                        f.write(text_short)
 
-            # Write abilities to ROM
-            elif type == 2:  # Check if filled
-                ability = self.item_locations[x][3]
-                ability_addr = self.item_locations[x][5]
-                map = self.item_locations[x][8]
+                # Write abilities to ROM
+                elif type == 2:  # Check if filled
+                    ability = self.item_locations[x][3]
+                    ability_addr = self.item_locations[x][5]
+                    map = self.item_locations[x][8]
 
-                # Change Dark Space type in event table
-                if ability in [48, 49, 50, 51, 52, 53]:
-                    f.seek(int(ability_addr, 16) + rom_offset)
-                    f.write(b"\x05")
+                    # Change Dark Space type in event table
+                    if ability in [48, 49, 50, 51, 52, 53]:
+                        f.seek(int(ability_addr, 16) + rom_offset)
+                        f.write(b"\x05")
 
-                # Update ability text table
-                if ability == 48:  # Psycho Dash
-                    # f.seek(int("8eb5a",16)+2*i+rom_offset)
-                    f.seek(int("8eb5a", 16) + rom_offset)
-                    f.write(map)
-                if ability == 49:  # Psycho Slide
-                    f.seek(int("8eb5c", 16) + rom_offset)
-                    f.write(map)
-                if ability == 50:  # Spin Dash
-                    f.seek(int("8eb5e", 16) + rom_offset)
-                    f.write(map)
-                if ability == 51:  # Dark Friar
-                    f.seek(int("8eb60", 16) + rom_offset)
-                    f.write(map)
-                if ability == 52:  # Aura Barrier
-                    f.seek(int("8eb62", 16) + rom_offset)
-                    f.write(map)
-                if ability == 53:  # Earthquaker
-                    f.seek(int("8eb64", 16) + rom_offset)
-                    f.write(map)
-
+                    # Update ability text table
+                    if ability == 48:  # Psycho Dash
+                        # f.seek(int("8eb5a",16)+2*i+rom_offset)
+                        f.seek(int("8eb5a", 16) + rom_offset)
+                        f.write(map)
+                    if ability == 49:  # Psycho Slide
+                        f.seek(int("8eb5c", 16) + rom_offset)
+                        f.write(map)
+                    if ability == 50:  # Spin Dash
+                        f.seek(int("8eb5e", 16) + rom_offset)
+                        f.write(map)
+                    if ability == 51:  # Dark Friar
+                        f.seek(int("8eb60", 16) + rom_offset)
+                        f.write(map)
+                    if ability == 52:  # Aura Barrier
+                        f.seek(int("8eb62", 16) + rom_offset)
+                        f.write(map)
+                    if ability == 53:  # Earthquaker
+                        f.seek(int("8eb64", 16) + rom_offset)
+                        f.write(map)
+        print("ROM: items done")
         # Special code for 2-item event in Dao
         item1 = self.item_locations[125][3]
         item2 = self.item_locations[126][3]
         f.seek(int("8fde0", 16) + rom_offset)
         f.write(b"\xd3" + self.item_text_short[item1] + b"\xcb")
         f.write(self.item_text_short[item2] + b"\xcf\xce")
+        print("ROM: Dao items done")
 
         # Write in-game spoilers
         i = 0
@@ -1069,7 +1096,7 @@ class World:
             if i < len(self.spoilers):
                 f.write(self.spoilers[i])
                 i += 1
-
+        print("ROM: spoilers done")
         # Enemizer
         if self.enemizer != "None":
             # "Fix" Ankor Wat Gorgons so they don't fall from the ceiling
@@ -1113,34 +1140,35 @@ class World:
             for x in switch_str:
                 f.write(x)
             f.write(b"\x02\xe0")
+        print("ROM: switches done")
+        # Swapped exits -- COMMENTED OUT FOR NOW***********************
+        if False:
+            for exit in self.exits:
+                if self.exits[exit][1] > 0:
+                    to_exit = self.exits[exit][1]
+                    map_str = self.exits[to_exit][9]
+                    if self.exits[exit][8] != "":
+                        f.seek(int(self.exits[exit][8], 16) + rom_offset)
+                        f.write(map_str)
+                    else:
+                        map_id = map_str[0:1]
+                        xcoord = int.to_bytes(int.from_bytes(map_str[1:3], byteorder="little") // 16, 2, byteorder='little')
+                        ycoord = int.to_bytes(int.from_bytes(map_str[3:5], byteorder="little") // 16, 2, byteorder='little')
+                        facedir = map_str[5:6]
+                        camera = map_str[6:8]
+                        # print(map_id,xcoord,ycoord,facedir,camera)
 
-        # Swapped exits
-        for exit in self.exits:
-            if self.exits[exit][1] > 0:
-                to_exit = self.exits[exit][1]
-                map_str = self.exits[to_exit][9]
-                if self.exits[exit][8] != "":
-                    f.seek(int(self.exits[exit][8], 16) + rom_offset)
-                    f.write(map_str)
-                else:
-                    map_id = map_str[0:1]
-                    xcoord = int.to_bytes(int.from_bytes(map_str[1:3], byteorder="little") // 16, 2, byteorder='little')
-                    ycoord = int.to_bytes(int.from_bytes(map_str[3:5], byteorder="little") // 16, 2, byteorder='little')
-                    facedir = map_str[5:6]
-                    camera = map_str[6:8]
-                    # print(map_id,xcoord,ycoord,facedir,camera)
-
-                    f.seek(int(self.exits_detailed[exit][0], 16) + rom_offset)
-                    f.write(map_id)
-                    f.seek(int(self.exits_detailed[exit][1], 16) + rom_offset)
-                    f.write(xcoord)
-                    f.seek(int(self.exits_detailed[exit][2], 16) + rom_offset)
-                    f.write(ycoord)
-                    if self.exits_detailed[exit][3] != "":
-                        f.seek(int(self.exits_detailed[exit][3], 16) + rom_offset)
-                        f.write(facedir)
-                    f.seek(int(self.exits_detailed[exit][4], 16) + rom_offset)
-                    f.write(camera)
+                        f.seek(int(self.exits_detailed[exit][0], 16) + rom_offset)
+                        f.write(map_id)
+                        f.seek(int(self.exits_detailed[exit][1], 16) + rom_offset)
+                        f.write(xcoord)
+                        f.seek(int(self.exits_detailed[exit][2], 16) + rom_offset)
+                        f.write(ycoord)
+                        if self.exits_detailed[exit][3] != "":
+                            f.seek(int(self.exits_detailed[exit][3], 16) + rom_offset)
+                            f.write(facedir)
+                        f.seek(int(self.exits_detailed[exit][4], 16) + rom_offset)
+                        f.write(camera)
 
         # print "ROM successfully created"
 
@@ -1514,34 +1542,34 @@ class World:
             75: [1, 3, "", "Mystic Statue 6", False, 2],
 
             # Event Switches
-            200: [0, 4, "", "Kara Released", False, 1]
-            201: [0, 4, "", "Itory: Got Lilly", False, 1]
-            202: [0, 4, "", "Moon Tribe: Healed Spirits", False, 1]
-            203: [0, 4, "", "Inca: Beat Castoth", False, 1]
-            204: [0, 4, "", "Freejia: Found Laborer", False, 1]
-            205: [0, 4, "", "Neil's: Memory Restored", False, 1]
-            206: [0, 4, "", "Sky Garden: Map 82 NW Switch", False, 1]
-            207: [0, 4, "", "Sky Garden: Map 82 NE Switch", False, 1]
-            208: [0, 4, "", "Sky Garden: Map 82 NW Switch", False, 1]
-            209: [0, 4, "", "Sky Garden: Map 84 Switch", False, 1]
-            210: [0, 4, "", "Seaside: Fountain Purified", False, 1]
-            211: [0, 4, "", "Mu: Water Lowered 1", False, 1]
-#            212: [0, 4, "", "Mu: Water Lowered 2", False, 1]
-            213: [0, 4, "", "Angel: Puzzle Complete", False, 1]
-            214: [0, 4, "", "Mt Kress: Drops Used 1", False, 1]
-            215: [0, 4, "", "Mt Kress: Drops Used 2", False, 1]
-            216: [0, 4, "", "Mt Kress: Drops Used 3", False, 1]
-            217: [0, 4, "", "Pyramid: Hieroglyphs Placed", False, 1]
-            218: [0, 4, "", "Babel: Castoth Defeated", False, 1]
-            219: [0, 4, "", "Babel: Viper Defeated", False, 1]
-            220: [0, 4, "", "Babel: Vampires Defeated", False, 1]
-            221: [0, 4, "", "Babel: Sand Fanger Defeated", False, 1]
-            222: [0, 4, "", "Babel: Mummy Queen Defeated", False, 1]
-            223: [0, 4, "", "Mansion: Solid Arm Defeated", False, 1]
+            200: [0, 4, "", "Kara Released", False, 1],
+            201: [0, 4, "", "Itory: Got Lilly", False, 1],
+            202: [0, 4, "", "Moon Tribe: Healed Spirits", False, 1],
+            203: [0, 4, "", "Inca: Beat Castoth", False, 1],
+            204: [0, 4, "", "Freejia: Found Laborer", False, 1],
+            205: [0, 4, "", "Neil's: Memory Restored", False, 1],
+            206: [0, 4, "", "Sky Garden: Map 82 NW Switch", False, 1],
+            207: [0, 4, "", "Sky Garden: Map 82 NE Switch", False, 1],
+            208: [0, 4, "", "Sky Garden: Map 82 NW Switch", False, 1],
+            209: [0, 4, "", "Sky Garden: Map 84 Switch", False, 1],
+            210: [0, 4, "", "Seaside: Fountain Purified", False, 1],
+            211: [0, 4, "", "Mu: Water Lowered 1", False, 1],
+#            212: [0, 4, "", "Mu: Water Lowered 2", False, 1],
+            213: [0, 4, "", "Angel: Puzzle Complete", False, 1],
+            214: [0, 4, "", "Mt Kress: Drops Used 1", False, 1],
+            215: [0, 4, "", "Mt Kress: Drops Used 2", False, 1],
+            216: [0, 4, "", "Mt Kress: Drops Used 3", False, 1],
+            217: [0, 4, "", "Pyramid: Hieroglyphs Placed", False, 1],
+            218: [0, 4, "", "Babel: Castoth Defeated", False, 1],
+            219: [0, 4, "", "Babel: Viper Defeated", False, 1],
+            220: [0, 4, "", "Babel: Vampires Defeated", False, 1],
+            221: [0, 4, "", "Babel: Sand Fanger Defeated", False, 1],
+            222: [0, 4, "", "Babel: Mummy Queen Defeated", False, 1],
+            223: [0, 4, "", "Mansion: Solid Arm Defeated", False, 1],
 
             # Misc
-            300: [0, 5, "", "Freedan Access", False, 1]
-            301: [0, 5, "", "Glitches", False, 1]
+            300: [0, 5, "", "Freedan Access", False, 1],
+            301: [0, 5, "", "Glitches", False, 1],
             302: [0, 5, "", "Early Firebird", False, 1]
         }
 
@@ -1778,33 +1806,33 @@ class World:
             153: [479, 3, False, 0, [70, 71, 72, 73, 74], "", "", "", "", "Babel Prize                         "],
 
             # Event Switches
-            201: [ 56, 1, True, 201, [], "", "", "", "", "Lilly                         "]
-            202: [ 61, 1, True, 202, [], "", "", "", "", "Moon Tribe: Spirits Healed     "]
-            203: [ 97, 1, True, 203, [], "", "", "", "", "Inca: Castoth defeated     "]
-            204: [122, 1, True, 204, [], "", "", "", "", "Freejia: Found Laborer     "]
-            205: [161, 1, True, 205, [], "", "", "", "", "Neil's Memory Restored     "]
-            206: [187, 1, True, 206, [], "", "", "", "", "Sky Garden: Map 82 NW Switch     "]
-            207: [189, 1, True, 207, [], "", "", "", "", "Sky Garden: Map 82 NE Switch     "]
-            208: [188, 1, True, 208, [], "", "", "", "", "Sky Garden: Map 82 SE Switch     "]
-            209: [197, 1, True, 209, [], "", "", "", "", "Sky Garden: Map 84 Switch     "]
-            210: [208, 1, True, 210, [], "", "", "", "", "Seaside: Fountain Purified     "]
-            211: [245, 1, True, 211, [], "", "", "", "", "Mu: Water Lowered 1     "]
-            212: [246, 1, True, 211, [], "", "", "", "", "Mu: Water Lowered 2     "]
-            213: [274, 1, True, 213, [], "", "", "", "", "Angel: Puzzle Complete     "]
-            214: [346, 1, True, 214, [], "", "", "", "", "Mt Kress: Drops used 1     "]
-            215: [347, 1, True, 215, [], "", "", "", "", "Mt Kress: Drops used 2     "]
-            216: [348, 1, True, 216, [], "", "", "", "", "Mt Kress: Drops used 3     "]
-            217: [449, 1, True, 217, [], "", "", "", "", "Pyramid: Hieroglyphs placed     "]
-            218: [474, 1, True, 218, [], "", "", "", "", "Babel: Castoth defeated     "]
-            219: [475, 1, True, 219, [], "", "", "", "", "Babel: Viper defeated     "]
-            220: [476, 1, True, 220, [], "", "", "", "", "Babel: Vampires defeated     "]
-            221: [477, 1, True, 221, [], "", "", "", "", "Babel: Sand Fanger defeated     "]
-            222: [478, 1, True, 222, [], "", "", "", "", "Babel: Mummy Queen defeated     "]
-            223: [482, 1, True, 223, [], "", "", "", "", "Mansion: Solid Arm defeated     "]
+            201: [ 56, 1, True, 201, [], "", "", "", "", "Lilly                               "],
+            202: [ 61, 1, True, 202, [], "", "", "", "", "Moon Tribe: Spirits Healed          "],
+            203: [ 97, 1, True, 203, [], "", "", "", "", "Inca: Castoth defeated              "],
+            204: [122, 1, True, 204, [], "", "", "", "", "Freejia: Found Laborer              "],
+            205: [161, 1, True, 205, [], "", "", "", "", "Neil's Memory Restored              "],
+            206: [187, 1, True, 206, [], "", "", "", "", "Sky Garden: Map 82 NW Switch        "],
+            207: [189, 1, True, 207, [], "", "", "", "", "Sky Garden: Map 82 NE Switch        "],
+            208: [188, 1, True, 208, [], "", "", "", "", "Sky Garden: Map 82 SE Switch        "],
+            209: [197, 1, True, 209, [], "", "", "", "", "Sky Garden: Map 84 Switch           "],
+            210: [208, 1, True, 210, [], "", "", "", "", "Seaside: Fountain Purified          "],
+            211: [245, 1, True, 211, [], "", "", "", "", "Mu: Water Lowered 1                 "],
+            212: [246, 1, True, 211, [], "", "", "", "", "Mu: Water Lowered 2                 "],
+            213: [274, 1, True, 213, [], "", "", "", "", "Angel: Puzzle Complete              "],
+            214: [346, 1, True, 214, [], "", "", "", "", "Mt Kress: Drops used 1              "],
+            215: [347, 1, True, 215, [], "", "", "", "", "Mt Kress: Drops used 2              "],
+            216: [348, 1, True, 216, [], "", "", "", "", "Mt Kress: Drops used 3              "],
+            217: [449, 1, True, 217, [], "", "", "", "", "Pyramid: Hieroglyphs placed         "],
+            218: [474, 1, True, 218, [], "", "", "", "", "Babel: Castoth defeated             "],
+            219: [475, 1, True, 219, [], "", "", "", "", "Babel: Viper defeated               "],
+            220: [476, 1, True, 220, [], "", "", "", "", "Babel: Vampires defeated            "],
+            221: [477, 1, True, 221, [], "", "", "", "", "Babel: Sand Fanger defeated         "],
+            222: [478, 1, True, 222, [], "", "", "", "", "Babel: Mummy Queen defeated         "],
+            223: [482, 1, True, 223, [], "", "", "", "", "Mansion: Solid Arm defeated         "],
 
             # Misc
-            301: [0, 1, True, 0, [], "", "", "", "", "Glitches                         "]
-            302: [0, 1, True, 0, [], "", "", "", "", "Early Firebird                         "]
+            301: [0, 1, True, 0, [], "", "", "", "", "Glitches                                "],
+            302: [0, 1, True, 0, [], "", "", "", "", "Early Firebird                          "]
         }
 
         # World graph is initially populated only with "free" edges
@@ -2271,8 +2299,8 @@ class World:
             482: [False, [], "Jeweler's Mansion: Solid Arm", []],
 
             # Game End
-            490: [False, [], "Kara Released", []]
-            491: [False, [], "Firebird", []]
+            490: [False, [], "Kara Released", []],
+            491: [False, [], "Firebird", []],
             492: [False, [], "Dark Gaia", []]
         }
 
