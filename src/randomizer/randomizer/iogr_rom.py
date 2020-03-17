@@ -12,8 +12,9 @@ from .models.enums.goal import Goal
 from .models.enums.logic import Logic
 from .models.enums.enemizer import Enemizer
 from .models.enums.start_location import StartLocation
+from .models.enums.sprites import Sprite
 
-VERSION = "3.0.0"
+VERSION = "3.0.3"
 
 KARA_EDWARDS = 1
 KARA_MINE = 2
@@ -32,6 +33,7 @@ FORCE_CHANGE = b"\x22\x30\xfd\x88"
 OUTPUT_FOLDER: str = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + ".." + os.path.sep + ".." + os.path.sep + "data" + os.path.sep + "output" + os.path.sep
 BIN_PATH: str = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + "bin" + os.path.sep
 AG_PLUGIN_PATH: str = BIN_PATH + "plugins" + os.path.sep + "AG" + os.path.sep
+SPRITE_PLUGIN_PATH: str = BIN_PATH + "plugins" + os.path.sep + "sprites" + os.path.sep
 
 
 def __get_data_file__(data_filename: str) -> BinaryIO:
@@ -155,13 +157,13 @@ class Randomizer:
             # Change firebird logic
             # Requires Shadow's form, Crystal Ring (switch #$3e) and Kara rescued (switch #$8a)
             patch.seek(int("2cd07", 16) + rom_offset)
-            patch.write(b"\x4c\xc0\xf0\xea\xea\xea")
+            patch.write(b"\xa0\x00\x00\x4c\xc0\xf0")
             patch.seek(int("2cd88", 16) + rom_offset)
-            patch.write(b"\x4c\xf0\xf0\xea\xea\xea")
+            patch.write(b"\xa0\x00\x00\x4c\xc1\xf0")
             patch.seek(int("2ce06", 16) + rom_offset)
-            patch.write(b"\x4c\x20\xf1\xea\xea\xea")
+            patch.write(b"\xa0\x00\x00\x4c\xc2\xf0")
             patch.seek(int("2ce84", 16) + rom_offset)
-            patch.write(b"\x4c\x50\xf1\xea\xea\xea")
+            patch.write(b"\xa0\x00\x00\x4c\xc3\xf0")
 
             # Load firebird assets into every map
             patch.seek(int("3e03a", 16) + rom_offset)
@@ -964,12 +966,12 @@ class Randomizer:
 
         # Instant form change & warp to Seaside Palace if Viper is defeated
         patch.seek(int("ace9b", 16) + rom_offset)
-        patch.write(b"\x4c\x82\xff")
+        patch.write(b"\x4c\x99\xff")
         patch.seek(int("acecb", 16) + rom_offset)
         patch.write(b"\x01\x02\x26\x5a\x90\x00\x70\x00\x83\x00\x14\x02\xc1\x6b")
 
-        f_viperchange = open(BIN_PATH + "0aff82_viperchange.bin", "rb")
-        patch.seek(int("aff82", 16) + rom_offset)
+        f_viperchange = open(BIN_PATH + "0aff99_viperchange.bin", "rb")
+        patch.seek(int("aff99", 16) + rom_offset)
         patch.write(f_viperchange.read())
         f_viperchange.close
 
@@ -1546,8 +1548,8 @@ class Randomizer:
 
         patch.write(qt_encode("-Voranthe  -wormsofcan") + b"\xCB")
         patch.write(qt_encode("-Wilddin   -Xyrcord") + b"\xCB")
-        patch.write(qt_encode("-xIceblue  -ZockerStu") + b"\xCB")
-        patch.write(qt_encode("-Z4t0x") + b"\xC9\xB4\xCE")
+        patch.write(qt_encode("-xIceblue  -Zeke Starr") + b"\xCB")
+        patch.write(qt_encode("-Z4t0x     -ZockerStu") + b"\xC9\xB4\xCE")
 
         patch.write(b"\xCB" + qt_encode("  Thank you all so much!"))
         patch.write(b"\xCB" + qt_encode("     This was so fun!"))
@@ -1786,7 +1788,7 @@ class Randomizer:
 
         # Change boss room ranges
         patch.seek(int("c31a", 16) + rom_offset)
-        patch.write(b"\x67\x5A\x73\x00\x8A\x82\xA8\x00\xDD\xCC\xDD\x00\xF6\xB0\xBF\x00")
+        patch.write(b"\x67\x5A\x74\x00\x8A\x82\xA9\x00\xDD\xCC\xDD\x00\xF6\xB0\xBF\x00")
         # patch.write(b"\xEA\xB0\xBF\x00")   # If Solid Arm ever grants Babel rewards
 
         # Add boss reward events to Babel and Jeweler Mansion
@@ -2945,14 +2947,24 @@ class Randomizer:
         #                                   Plugins
         ##########################################################################
         # Apocalypse Gaia
-
         if self.w.goal == "Apocalypse Gaia":
             patch.seek(int("98de4",16)+rom_offset)
             patch.write(b"\x80") # Respawn in space
             for pluginfilename in os.listdir(AG_PLUGIN_PATH):
                 if pluginfilename[-4:] == ".bin":
                     f_plugin = open(AG_PLUGIN_PATH + pluginfilename, "rb")
-                    patch.seek(int(pluginfilename[:6],16)+rom_offset)
+                    patch.seek(int(pluginfilename[:6],16) + rom_offset)
+                    patch.write(f_plugin.read())
+                    f_plugin.close
+
+        # Custom sprite
+        custom_sprite_value = settings.sprite.value.lower()
+        if custom_sprite_value != Sprite.WILL.value:
+            sprite_path = SPRITE_PLUGIN_PATH + custom_sprite_value + os.path.sep
+            for pluginfilename in os.listdir(sprite_path):
+                if pluginfilename[-4:] == ".bin":
+                    f_plugin = open(sprite_path + pluginfilename, "rb")
+                    patch.seek(int(pluginfilename[:6],16) + rom_offset)
                     patch.write(f_plugin.read())
                     f_plugin.close
 
