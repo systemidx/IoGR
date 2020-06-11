@@ -441,6 +441,12 @@ class World:
         random.shuffle(rewards)
 
         # Allocate rewards to maps
+#        for map_reward in settings.map_rewards.value:
+#            map = map_reward[0]
+#            reward = map_reward[1]
+#            if "OHKO" not in self.variant or reward > 1:  # No HP rewards for OHKO
+#                self.maps[map][2] = reward
+
         for area in maps:
             i = 0
             while i < boss_rewards:
@@ -607,6 +613,13 @@ class World:
 
             for x in ds_unlock:
                 self.item_locations[x][2] = False
+
+        # Red Jewel Hunts change the graph
+        if self.goal == "Red Jewel Hunt":
+            self.logic[24][1] = 70
+            self.logic[25][1] = 70
+            self.logic[26][1] = 70
+            self.logic[27][1] = 70
 
         # Change graph logic depending on Kara's location
         if self.kara == 1:
@@ -796,8 +809,7 @@ class World:
                 goal = False
                 print("ERROR: Inventory capacity exceeded")
             else:
-                goal = (("Gaia" in self.goal and self.graph[70][0]) or
-                        (self.goal == "Red Jewel Hunt" and self.graph[68][0]))
+                goal = self.graph[70][0])
 
             # Get list of new progression options
             progression_list = self.progression_list(start_items)
